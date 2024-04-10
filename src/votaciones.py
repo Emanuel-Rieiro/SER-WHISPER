@@ -5,12 +5,12 @@ def votacion_promedio_simple(df_annotations: pd.DataFrame, part_num: int, pc_num
         Inputs:
             -df_annotations: Dataset annotations directory. For every file contains contains a row with the name, emotion, annotator, podcast part and number.
             -pc_num: PodCast Number
-            -part_num: Part 
-            -audio_name (optional): Audio name, including the .wav extension 
+            -part_num (opcional): Part_Num del audio
+            -audio_name (opcional): Audio_Name, incluyendo el .wav 
 
         Output:
-            Dataframe consisting of 3 columns: Time, Arousal, Dominance, Valence.
-            The Arousal, Dominance and Valence columns represent the mean vote calculated for corresponding Time in the audio.
+            Pandas Dataframe de 3 columnas: Time, Valence, Arousal, Dominance.
+            Cada columna representa la votación promedio para ese momento en el audio.
     """
 
     votation_means = pd.DataFrame(columns = ['Time','Vote','Emotion'])
