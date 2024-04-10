@@ -6,7 +6,7 @@ def votacion_promedio_simple(df_annotations: pd.DataFrame, part_num: int, pc_num
             -df_annotations: Dataset annotations directory. For every file contains contains a row with the name, emotion, annotator, podcast part and number.
             -pc_num: PodCast Number
             -part_num (opcional): Part_Num del audio
-            -audio_name (opcional): Audio_Name, incluyendo el .wav 
+            -audio_name (opcional): Audio_Name, incluyendo el .wav, si se da, ignora el pc_num
 
         Output:
             Pandas Dataframe de 3 columnas: Time, Valence, Arousal, Dominance.
@@ -38,5 +38,5 @@ def votacion_promedio_simple(df_annotations: pd.DataFrame, part_num: int, pc_num
 
     df_emotions_vote = pd.DataFrame(votation_means.pivot_table(columns = 'Emotion', index = 'Time', values = 'Vote').to_records()).set_index('Time')
     df_emotions_vote = df_emotions_vote.fillna(method='ffill')
-
-    return df_emotions_vote.reset_index()
+    
+    return df_emotions_vote.reset_index()[['Time','Valence','Arousal','Dominance']]
