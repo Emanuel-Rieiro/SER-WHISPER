@@ -1,4 +1,4 @@
-ekmans_thresholds = {
+ekman = {
         'anger': (-0.43, 0.67, 0.34),
         'joy': (0.76, 0.48, 0.35),
         'surprise': (0.4, 0.67, -0.13),
@@ -8,7 +8,7 @@ ekmans_thresholds = {
         'neutral': (0, 0, 0)
     }
 
-occ_thresholds = {
+occ = {
         'admiration': (0.5, 0.3, -0.2),
         'anger': (-0.51, 0.59, 0.25),
         'disliking': (-0.4, 0.2, 0.1),
@@ -34,3 +34,7 @@ occ_thresholds = {
         'shame': (-0.3, 0.1, -0.6),
         'neutral': (0, 0, 0)
     }
+
+russell_mehrabian = {
+    
+}
