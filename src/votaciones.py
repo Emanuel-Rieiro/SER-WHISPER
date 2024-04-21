@@ -68,11 +68,11 @@ def votacion_promedio_ponderada(df_annotations: pd.DataFrame, pesos: dict, part_
         
         for name, annotator, emot in zip(df_copy['Annotation_File'], df_copy['Annotator'], df_copy['Emotion']):
 
-            signo = np.sign(pesos[emotion][str(annotator)]['Diferencia'])
+            signo = np.sign(pesos[emotion][str(annotator)])
             temp_df = pd.read_csv(f'data/MSPCORPUS/Annotations/{emot}/{name}', skiprows=9, header=None, names=['Time', 'Annotation'])
             temp_df['Annotator'] = annotator
             temp_df['Corrector'] = np.where(temp_df['Annotation'] > 0, 1, -1)
-            temp_df['Annotation_New'] = (abs(temp_df['Annotation']) * ((pesos[emotion][str(annotator)]['Diferencia'] * multiplicador) + signo)) * temp_df['Corrector']
+            temp_df['Annotation_New'] = (abs(temp_df['Annotation']) * ((pesos[emotion][str(annotator)] * multiplicador) + signo)) * temp_df['Corrector']
             time = pd.concat([time, temp_df], ignore_index = True)
 
         df_pivot = pd.DataFrame(time.pivot_table(columns = 'Annotator', index = 'Time', values = 'Annotation_New').to_records()).set_index('Time')
