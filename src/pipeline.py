@@ -23,6 +23,7 @@ class DataPipeline:
         self.funcion_features = kwargs.get('funcion_features', opensmile_features)
         self.cache = kwargs.get('cache', False)
         self.mapping = kwargs.get('mapping', 'Ekman')
+        self.min_muestras = kwargs.get('min_muestras', 400)
 
         # Crear directorios
         try: os.listdir(f'data/MODELS/{self.model_version}')
@@ -167,11 +168,11 @@ class DataPipeline:
         df_copy['Cuenta'] = 1
         df_copy.groupby('Target').count()[['Target','Cuenta']]
 
-    def alinear_muestras(self, min_cuenta : int):
+    def alinear_muestras(self):
         df_copy = self.df_final.copy()
         df_copy['Cuenta'] = 1
         df_cuenta = df_copy.groupby('Target').count().reset_index()[['Target','Cuenta']]
-        target_validos = df_cuenta[df_cuenta['Cuenta'] > min_cuenta]
+        target_validos = df_cuenta[df_cuenta['Cuenta'] > self.min_muestras]
 
         threshold = target_validos['Cuenta'].min()
         
