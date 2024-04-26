@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-def votacion_promedio_simple(df_annotations: pd.DataFrame, part_num: int, pc_num: int = None, audio_name: str = None) -> pd.DataFrame:
+def votacion_promedio_simple(df_annotations: pd.DataFrame, part_num: int, pc_num: int = None, audio_name: str = None, **kwargs) -> pd.DataFrame:
     """
         Inputs:
             -df_annotations: Dataset annotations directory. For every file contains contains a row with the name, emotion, annotator, podcast part and number.
@@ -42,7 +42,7 @@ def votacion_promedio_simple(df_annotations: pd.DataFrame, part_num: int, pc_num
     
     return df_emotions_vote.reset_index()[['Time','Valence','Arousal','Dominance']]
 
-def votacion_promedio_ponderada(df_annotations: pd.DataFrame, pesos: dict, part_num: int, pc_num: int = None, audio_name: str = None, multiplicador : float = 0) -> pd.DataFrame:
+def votacion_promedio_ponderada(df_annotations: pd.DataFrame, pesos: dict, part_num: int, pc_num: int = None, **kwargs) -> pd.DataFrame:
     """
         Inputs:
             -df_annotations: Dataset annotations directory. For every file contains contains a row with the name, emotion, annotator, podcast part and number.
@@ -50,12 +50,15 @@ def votacion_promedio_ponderada(df_annotations: pd.DataFrame, pesos: dict, part_
             -pc_num: PodCast Number
             -part_num (opcional): Part_Num del audio
             -audio_name (opcional): Audio_Name, incluyendo el .wav, si se da, ignora el pc_num
-
+            -multiplicador (opcional): Se multiplica por el peso a agregar a un voto, sirve para incentivar
         Output:
-            Pandas Dataframe de 3 columnas: Time, Valence, Arousal, Dominance.
+            Pandas Dataframe de 4 columnas: Time, Valence, Arousal, Dominance.
             Cada columna representa la votación promedio para ese momento en el audio.
     """
 
+    audio_name = kwargs.get('audio_name', None)
+    multiplicador = kwargs.get('multiplicador', 1)
+    
     votation_means = pd.DataFrame(columns = ['Time','Vote','Emotion'])
     emotions = ['Valence','Arousal','Dominance']
 

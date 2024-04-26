@@ -1,7 +1,15 @@
 from src.rangos import ekman, occ, russell_mehrabian
 
 def obtener_emocion(valence : float, arousal : float, dominance : float, mapping : str) -> str:
-
+    """
+        Inputs:
+            -valence: valor de valencia
+            -arousal: valor de arousal
+            -dominance: valor de dominance
+            -mapping: tipo de mapeo a ser utilizado (Russell_Mehrabian, OCC, Ekman)
+        Output:
+            String de la mejor emoción
+    """
     best_emotion = None
     min_distance = float('inf')
 
