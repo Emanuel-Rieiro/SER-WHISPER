@@ -26,6 +26,9 @@ class DataPipeline:
         self.min_muestras = kwargs.get('min_muestras', 400)
 
         # Crear directorios
+        try: os.listdir(f'data/MODELS')
+        except: os.mkdir(f'data/MODELS') 
+
         try: os.listdir(f'data/MODELS/{self.model_version}')
         except: os.mkdir(f'data/MODELS/{self.model_version}') 
 
