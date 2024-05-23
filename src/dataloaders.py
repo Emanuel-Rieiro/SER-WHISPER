@@ -31,6 +31,13 @@ def cargar_audio_data(df_annotations: pd.DataFrame, pc_num: int = None, audio_na
 
 def crear_rangos_transcripciones(df_annotations: pd.DataFrame, model_version : str, **kwargs):
 
+    """
+        Input:
+            df_annotations: df de anotaciones del excel
+            model_version: string versión del modelo usada en la definción de la pipeline
+        Output:
+            Diccionario con key de cada audio, teniendo cada uno de dos listas: rangos y texto
+    """
     trans_path = kwargs.get('trans_path', 'data/TRANSCRIPCIONES/WHISPER')
     
     # Obtengo todos los audios diferents y defino un diccionario vacío
@@ -134,8 +141,17 @@ def crear_objetivos(df_annotations: pd.DataFrame, intervalos_transcripciones : d
 
     return targets_mean_vote
 
-def obtener_raw_data(df_annotations: pd.DataFrame, audio_name: str, dict_objetivos : dict, modelo : str, **kwargs):
+def obtener_raw_data(df_annotations: pd.DataFrame, audio_name: str, dict_objetivos : dict, **kwargs):
 
+    """
+        Input:
+            df_annotations: Dataframe excel de anotaciones
+            audio_name: Nombre del audio, incluyendo el .wav
+            dict_objetivos: Diccionario con los objetivos, debe tener los campos rango e indice
+        
+        Output:
+            Dataframe con las columnas Data, Time, Indice y Audio_Name
+    """
     data, time, sr = cargar_audio_data(df_annotations = df_annotations, audio_name = audio_name)
 
     assert len(data) == len(time), "La cantidad de data y la cantidad de tiempo no coinciden, revisar modulo de carga"
