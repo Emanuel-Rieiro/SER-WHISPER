@@ -1,7 +1,6 @@
 
 
 # Necesario para hacer andar esta funcionalidad de sklearn
-import sys
 import joblib
 
 import numpy as np
@@ -18,8 +17,6 @@ from src.votaciones import votacion_promedio_simple
 from src.traductores import obtener_emocion
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.decomposition import PCA
-
 
 class DataPipeline:
     def __init__(self, model_version : str, **kwargs):
@@ -34,6 +31,7 @@ class DataPipeline:
         self.mapping = kwargs.get('mapping', 'Ekman')
         self.min_muestras = kwargs.get('min_muestras', 400)
         self.filemode = kwargs.get('filemode', 'w')
+        self.epochs = kwargs.get('epochs', 50)
         self.encoder = None
         self.scaler = None
 
@@ -64,10 +62,13 @@ class DataPipeline:
 
     def _imprimir_detalles(self):
 
-        self._print(f'Parametros del modelo')
+        self._print(f'Modulo _imprimir_detalles')
         self._print(f'model_version: {self.model_version}')
+        self._print(f'mapping: {self.mapping}')
         self._print(f'cache: {str(self.cache)}')
         self._print(f'funcion_features: {self.funcion_features.__name__}')
+        self._print(f'funcion_votacion: {self.funcion_votacion.__name__}')
+        self._print(f'min_muestras: {self.min_muestras}')
         self._print('')
         self._print('---------------------------------------------------------')
 
@@ -76,8 +77,6 @@ class DataPipeline:
         """
             Output: Diccionario de keys con el nombre del audio, incluyendo el .wav y arrays "texto" y "rangos"
         """
-
-        self._print('Iniciando proceso para crear rango de transcripciones')
         
         if not self.cache:
             self.transcripciones = crear_rangos_transcripciones(self.df_annotations, self.model_version)
@@ -89,12 +88,9 @@ class DataPipeline:
             with open(f'data/MODELS/{self.model_version}/transcripciones.json', 'r') as f: 
                 self.transcripciones = json.load(f)
 
-        self._print('Proceso para crear rango de transcripciones finalizado con éxito')
         self._print('---------------------------------------------------------')
     
     def crear_objetivos(self):
-
-        self._print('Iniciando proceso para crear targets de entrenamiento')
 
         if not self.cache:
 
@@ -114,13 +110,10 @@ class DataPipeline:
 
             with open(f'data/MODELS/{self.model_version}/objetivos.json', 'r') as f: self.dict_objetivos = json.load(f)
 
-        self._print('Proceso para crear targets de entrenamiento finalizado con éxito')
         self._print('---------------------------------------------------------')
 
     def obtener_features(self):
         
-        self._print('Iniciando proceso para obtener features')
-
         lista_audios = self.df_annotations['Audio_Name'].unique()
         self.df_features = pd.DataFrame()
         step_skip = False
@@ -131,7 +124,7 @@ class DataPipeline:
             self._print('Se ha encontrado el dataset de features ya generado, cargando...')
             self.df_features = pd.read_csv(f'data/MODELS/{self.model_version}/FEATURES/df_features.csv')
             self.df_features['Features'] = self._convertir_strarray_a_array(self.df_features['Features'])
-            self._print('Dataset de features cargado con éxito')
+            self._print('Dataset de features cargado con exito')
         
         # Loop principal para generar el dataset de features
         else:
@@ -173,7 +166,6 @@ class DataPipeline:
             self._print('Guardando unificado de features')
             self.df_features.to_csv(f'data/MODELS/{self.model_version}/FEATURES/df_features.csv', index = False)
         
-        self._print('Proceso para obtener features finalizado con éxito')
         self._print('---------------------------------------------------------')
 
     def acondicionar_dataset(self):
@@ -181,7 +173,6 @@ class DataPipeline:
         """
             Merge del dataset de objetivos con el dataset de features
         """
-        self._print('Iniciando proceso para acondicionamiento')
 
         # Loop principal para obtener los tiempos y target en pandas
         df_ranges = pd.DataFrame()
@@ -204,29 +195,22 @@ class DataPipeline:
         # Merge del dataset de objetivos y de features
         self.df_final = pd.merge(self.df_features, df_ranges, how = 'inner', left_on = ['Indice','Audio_Name'], right_on = ['Indice','Audio_Name'])
 
-        self._print('Proceso para acondicionamiento finalizado')
         self._print('---------------------------------------------------------')
 
     def remover_duplicados(self):
         
-        self._print('Iniciando proceso para remover duplicados')
-
         self._print(f'Antes {len(self.df_final)}')
         self.df_final['Duplicated'] = self.df_final['Indice'].astype(str) + self.df_final['Audio_Name']
         self.df_final = self.df_final.drop_duplicates(subset = 'Duplicated')
         self.df_final = self.df_final.drop('Duplicated', axis = 1)
         self._print(f'Despues {len(self.df_final)}')
 
-        self._print('Proceso para remover duplicados finalizado')
         self._print('---------------------------------------------------------')
 
     def crear_target_categorico(self):
         
-        self._print('Iniciando proceso para taget categorico')
-
         self.df_final['Target'] = [obtener_emocion(i[0],i[1],i[2], mapping = self.mapping) for i in self.df_final['Target']]
 
-        self._print('Proceso para target categórico finalizado')
         self._print('---------------------------------------------------------')
 
     def alinear_muestras(self):
@@ -235,15 +219,22 @@ class DataPipeline:
             Alinea las muestras a la misma cantidad, tomando como cantidad a alinear la míniea superior al threshold
         """
 
-        self._print('Iniciando proceso para alinear muestras')
-
         df_copy = self.df_final.copy()
         df_copy['Cuenta'] = 1
         df_cuenta = df_copy.groupby('Target').count().reset_index()[['Target','Cuenta']]
+
+        self._print('Distribucion pre alineacion:')
+        for target in df_cuenta['Target']:
+            self._print(f'Feature: {target}, cantidad de samples: {df_cuenta[df_cuenta["Target"] == target]["Cuenta"].values[0]}')
+
+        self._print(f'Cantidad de targets pre alineacion {len(df_cuenta)}')
+        self._print('')
+
         target_validos = df_cuenta[df_cuenta['Cuenta'] > self.min_muestras]
 
         threshold = target_validos['Cuenta'].min()
         
+        self._print('Distribucion post alineacion:')
         df_final_2 = pd.DataFrame()
         for target in target_validos['Target']:
             df_temp = self.df_final[self.df_final['Target'] == target].sample(threshold)
@@ -251,11 +242,11 @@ class DataPipeline:
             df_final_2 = pd.concat([df_temp, df_final_2])
 
         self.df_final = df_final_2
-
-        self._print('Proceso para alinear muestras finalizado')
+        self._print(f'Cantidad de targets post alineacion {len(target_validos)}')
         self._print('---------------------------------------------------------')
 
-    def entrenar(self):
+    def entrenar_keras_categorico(self):
+
         X = [i for i in self.df_final['Features'].values]
         Y = self.df_final['Target'].values
 
@@ -275,11 +266,9 @@ class DataPipeline:
 
         self.model = MyKerasModel(self.x_train.shape[1], len(self.df_final['Target'].unique()), encoder = self.encoder)
         self.model.compile_model()
-        self.model.train_model(self.x_train, self.y_train, self.x_test, self.y_test)
+        self.model.train_model(self.x_train, self.y_train, self.x_test, self.y_test, epochs = self.epochs)
     
-    def metricas_modelo(self):
-
-        self._print('Metricas del modelo')
+    def metricas_modelo_categorico(self):
 
         loss, acc = self.model.evaluate_model(self.x_test, self.y_test)
         self._print(f'Loss: {loss}, Acc: {acc}')
@@ -299,7 +288,7 @@ class DataPipeline:
         self._print('F-score   : {}'.format(fscore))
 
     def guardar_modelo(self):
-        
+
         np.save(f'data/MODELS/{self.model_version}/x_train.npy', self.x_train)
         np.save(f'data/MODELS/{self.model_version}/x_test.npy', self.x_test)
         np.save(f'data/MODELS/{self.model_version}/y_train.npy', self.y_train)
@@ -323,4 +312,6 @@ class DataPipeline:
         return x
 
     def run_pipeline(self, steps):
-        for step in steps: step()
+        for step in steps:
+            self._print(f'Ejecutando modulo {step.__name__}')
+            step()
