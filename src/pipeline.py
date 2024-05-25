@@ -17,6 +17,8 @@ from src.votaciones import votacion_promedio_simple
 from src.traductores import obtener_emocion
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
 
 class DataPipeline:
     def __init__(self, model_version : str, **kwargs):
@@ -27,6 +29,7 @@ class DataPipeline:
         self.model_version = model_version
         self.funcion_votacion = kwargs.get('funcion_votacion', votacion_promedio_simple)
         self.funcion_features = kwargs.get('funcion_features', opensmile_features)
+        self.lag = kwargs.get('lag', 0)
         self.cache = kwargs.get('cache', False)
         self.mapping = kwargs.get('mapping', 'Ekman')
         self.min_muestras = kwargs.get('min_muestras', 400)
@@ -68,6 +71,7 @@ class DataPipeline:
         self._print(f'cache: {str(self.cache)}')
         self._print(f'funcion_features: {self.funcion_features.__name__}')
         self._print(f'funcion_votacion: {self.funcion_votacion.__name__}')
+        self._print(f'lag: {self.lag}')
         self._print(f'min_muestras: {self.min_muestras}')
         self._print('')
         self._print('---------------------------------------------------------')
@@ -97,14 +101,16 @@ class DataPipeline:
             self.dict_objetivos = crear_objetivos(self.df_annotations, 
                                       self.transcripciones, 
                                       self.funcion_votacion, 
-                                      self.model_version)
+                                      self.model_version, 
+                                      self.lag)
             
         elif 'objetivos.json' not in os.listdir(f'data/MODELS/{self.model_version}'):
 
             self.dict_objetivos = crear_objetivos(self.df_annotations, 
                                                   self.transcripciones, 
                                                   self.funcion_votacion, 
-                                                  self.model_version)
+                                                  self.model_version,
+                                                  self.lag)
         
         else:
 
@@ -286,6 +292,17 @@ class DataPipeline:
         self._print('Precision : {}'.format(precision))
         self._print('Recall    : {}'.format(recall))
         self._print('F-score   : {}'.format(fscore))
+
+        self._print('')
+        sns.set_theme(rc={'figure.figsize':(18,18)})
+        cm = confusion_matrix(self.encoder.inverse_transform(self.y_test), 
+                              self.encoder.inverse_transform(self.model.predict(self.x_test)))
+        cm = pd.DataFrame(cm , index = [i for i in self.encoder.categories_] , columns = [i for i in self.encoder.categories_])
+        sns_plot = sns.heatmap(cm, linecolor='white', cmap='Blues', linewidth=1, annot=True, fmt='')
+        sns_plot.set_xlabel("Predicted Labels")
+        sns_plot.set_ylabel("Actual Labels")
+        fig = sns_plot.get_figure()
+        fig.savefig(f"data/MODELS/{self.model_version}/confusion_matrix.png") 
 
     def guardar_modelo(self):
 

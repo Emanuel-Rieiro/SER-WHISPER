@@ -69,7 +69,7 @@ def crear_rangos_transcripciones(df_annotations: pd.DataFrame, model_version : s
 
     return trans_dict
 
-def crear_objetivos(df_annotations: pd.DataFrame, intervalos_transcripciones : dict, funcion_votacion, model_version: str):
+def crear_objetivos(df_annotations: pd.DataFrame, intervalos_transcripciones : dict, funcion_votacion, model_version: str, lag : float = 0):
 
     # Creo mi diccionario que voy a guardare como json
     targets_mean_vote = {}
@@ -112,14 +112,14 @@ def crear_objetivos(df_annotations: pd.DataFrame, intervalos_transcripciones : d
             ts_primera_anotacion = df_votacion['Time'][0]
             ts_ultima_anotacion = df_votacion['Time'][len(df_votacion) - 1]
 
-            # Agrego ventana de 0.1 segundos por lo visto en el análisis en la notebook 03
+            # Agrego padding de 0.1 segundos por lo visto en el análisis en la notebook 03
             while i + 1 <= len(int_act) and int_act[i][1] + 0.1 < ts_ultima_anotacion:
 
                 if int_act[i][0] > ts_primera_anotacion:
                     inicio = int_act[i][0]
                     fin = int_act[i][1] + 0.1
 
-                    votacion_promedio = df_votacion[(df_votacion['Time'] >= inicio) & (df_votacion['Time'] <= fin)][['Valence','Arousal','Dominance']].mean().values.tolist()
+                    votacion_promedio = df_votacion[(df_votacion['Time'] >= inicio + lag) & (df_votacion['Time'] <= fin + lag)][['Valence','Arousal','Dominance']].mean().values.tolist()
 
                     targets_mean_vote[audio_name]['targets'].append(votacion_promedio)
                     targets_mean_vote[audio_name]['rangos'].append((inicio, fin))
