@@ -13,20 +13,24 @@ class MyKerasModel:
 
     def _build_model(self):
         model = Sequential()
-        model.add(Conv1D(256, kernel_size=5, strides=1, padding='same', activation='relu', input_shape=(self.input_shape, 1)))
+        model.add(Conv1D(1024, kernel_size=5, strides=1, padding='same', activation='relu', input_shape=(self.input_shape, 1)))
+        model.add(MaxPooling1D(pool_size=5, strides = 2, padding = 'same'))
+
+        model.add(Conv1D(512, kernel_size=5, strides=1, padding='same', activation='relu'))
         model.add(MaxPooling1D(pool_size=5, strides = 2, padding = 'same'))
 
         model.add(Conv1D(256, kernel_size=5, strides=1, padding='same', activation='relu'))
         model.add(MaxPooling1D(pool_size=5, strides = 2, padding = 'same'))
+        model.add(Dropout(0.2))
 
         model.add(Conv1D(128, kernel_size=5, strides=1, padding='same', activation='relu'))
         model.add(MaxPooling1D(pool_size=5, strides = 2, padding = 'same'))
-        model.add(Dropout(0.2))
 
         model.add(Conv1D(64, kernel_size=5, strides=1, padding='same', activation='relu'))
         model.add(MaxPooling1D(pool_size=5, strides = 2, padding = 'same'))
 
         model.add(Flatten())
+        model.add(Dense(units=64, activation='relu'))
         model.add(Dense(units=32, activation='relu'))
         model.add(Dropout(0.3))
 
@@ -40,8 +44,8 @@ class MyKerasModel:
                            metrics = ['accuracy'])
 
     def train_model(self, x_train, y_train, x_test, y_test, epochs=1, batch_size=64):
-        rlrp = ReduceLROnPlateau(monitor='val_loss', factor=0.4, verbose=0, patience=2, min_lr=0.0000001)
-        es = EarlyStopping(monitor='val_loss', patience=5)
+        rlrp = ReduceLROnPlateau(monitor='val_loss', factor=0.4, verbose=0, patience = 10, min_lr=0.0000001)
+        es = EarlyStopping(monitor='val_loss', patience = 20)
         self.model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_test, y_test), callbacks=[rlrp, es])
 
     def evaluate_model(self, x_test, y_test):

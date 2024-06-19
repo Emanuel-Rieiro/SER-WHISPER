@@ -69,7 +69,7 @@ def crear_rangos_transcripciones(df_annotations: pd.DataFrame, model_version : s
 
     return trans_dict
 
-def crear_objetivos(df_annotations: pd.DataFrame, intervalos_transcripciones : dict, funcion_votacion, model_version: str, lag : float = 0):
+def crear_objetivos(df_annotations: pd.DataFrame, intervalos_transcripciones : dict, funcion_votacion, model_version: str, lag : float = 0, suavizado : bool = False):
 
     # Creo mi diccionario que voy a guardare como json
     targets_mean_vote = {}
@@ -96,7 +96,7 @@ def crear_objetivos(df_annotations: pd.DataFrame, intervalos_transcripciones : d
             print(f'Procesando parte {part_num} de {audio_name}')
 
             # Obtengo votación para la parte del audio
-            df_votacion = funcion_votacion(df_annotations, audio_name = audio_name, part_num = part_num)
+            df_votacion = funcion_votacion(df_annotations, audio_name = audio_name, part_num = part_num, suavizado = suavizado)
 
             # Verificamos que solo halla un start time y nos lo quedamos
             assert len(df_audio[df_audio['Part_Num'] == part_num]['start_time'].unique()) == 1, 'Más de un start time'
@@ -170,7 +170,7 @@ def obtener_raw_data(df_annotations: pd.DataFrame, audio_name: str, dict_objetiv
     df_audio = pd.DataFrame()
     df_audio['Data'] = x
     df_audio['Time'] = y
-    df_audio['Indice'] = z 
+    df_audio['Indice'] = z
     df_audio['Audio_Name'] = audio_name
 
     return df_audio

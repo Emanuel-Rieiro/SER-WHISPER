@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-def votacion_promedio_simple(df_annotations: pd.DataFrame, part_num: int, pc_num: int = None, audio_name: str = None, **kwargs) -> pd.DataFrame:
+def votacion_promedio_simple(df_annotations: pd.DataFrame, part_num: int, pc_num: int = None, audio_name: str = None, suavizado : bool = False,**kwargs) -> pd.DataFrame:
     """
         Inputs:
             -df_annotations: Dataset annotations directory. For every file contains contains a row with the name, emotion, annotator, podcast part and number.
@@ -39,10 +39,17 @@ def votacion_promedio_simple(df_annotations: pd.DataFrame, part_num: int, pc_num
 
     df_emotions_vote = pd.DataFrame(votation_means.pivot_table(columns = 'Emotion', index = 'Time', values = 'Vote').to_records()).set_index('Time')
     df_emotions_vote = df_emotions_vote.fillna(method='ffill')
+    df_emotions_vote = df_emotions_vote.fillna(method='bfill') # NEW: Agregado para rellenar las anotacioens que faltan al empezar
+    
+    # Código para aplicación del suavizado por ventana movil, por ahora hard codeada a 300
+    if suavizado:
+        for emocion in ['Valence','Arousal','Dominance']:
+            df_emotions_vote[emocion] = df_emotions_vote[emocion].rolling(int(len(df_emotions_vote[emocion])/300)).mean()
+            df_emotions_vote = df_emotions_vote.fillna(method='bfill')
     
     return df_emotions_vote.reset_index()[['Time','Valence','Arousal','Dominance']]
 
-def votacion_promedio_ponderada(df_annotations: pd.DataFrame, pesos: dict, part_num: int, pc_num: int = None, **kwargs) -> pd.DataFrame:
+def votacion_promedio_ponderada(df_annotations: pd.DataFrame, pesos: dict, part_num: int, pc_num: int = None, suavizado : bool = False, **kwargs) -> pd.DataFrame:
     """
         Inputs:
             -df_annotations: Dataset annotations directory. For every file contains contains a row with the name, emotion, annotator, podcast part and number.
@@ -88,4 +95,10 @@ def votacion_promedio_ponderada(df_annotations: pd.DataFrame, pesos: dict, part_
     df_emotions_vote = pd.DataFrame(votation_means.pivot_table(columns = 'Emotion', index = 'Time', values = 'Vote').to_records()).set_index('Time')
     df_emotions_vote = df_emotions_vote.fillna(method='ffill')
 
+    # Código para aplicación del suavizado por ventana movil, por ahora hard codeada a 300
+    if suavizado:
+        for emocion in ['Valence','Arousal','Dominance']:
+            df_emotions_vote[emocion] = df_emotions_vote[emocion].rolling(int(len(df_emotions_vote[emocion])/300)).mean()
+            df_emotions_vote = df_emotions_vote.fillna(method='bfill')
+            
     return df_emotions_vote.reset_index()[['Time','Valence','Arousal','Dominance']]

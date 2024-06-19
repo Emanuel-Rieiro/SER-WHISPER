@@ -19,6 +19,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
+import matplotlib.pyplot as plt
 
 class DataPipeline:
     def __init__(self, model_version : str, **kwargs):
@@ -35,6 +36,7 @@ class DataPipeline:
         self.min_muestras = kwargs.get('min_muestras', 400)
         self.filemode = kwargs.get('filemode', 'w')
         self.epochs = kwargs.get('epochs', 50)
+        self.suavizado = kwargs.get('suavizado', False)
         self.encoder = None
         self.scaler = None
 
@@ -67,12 +69,14 @@ class DataPipeline:
 
         self._print(f'Modulo _imprimir_detalles')
         self._print(f'model_version: {self.model_version}')
-        self._print(f'mapping: {self.mapping}')
-        self._print(f'cache: {str(self.cache)}')
-        self._print(f'funcion_features: {self.funcion_features.__name__}')
         self._print(f'funcion_votacion: {self.funcion_votacion.__name__}')
+        self._print(f'funcion_features: {self.funcion_features.__name__}')
         self._print(f'lag: {self.lag}')
+        self._print(f'cache: {str(self.cache)}')
+        self._print(f'mapping: {self.mapping}')
         self._print(f'min_muestras: {self.min_muestras}')
+        self._print(f'filemode: {self.filemode}')
+        self._print(f'epochs: {self.epochs}')
         self._print('')
         self._print('---------------------------------------------------------')
 
@@ -102,7 +106,8 @@ class DataPipeline:
                                       self.transcripciones, 
                                       self.funcion_votacion, 
                                       self.model_version, 
-                                      self.lag)
+                                      self.lag,
+                                      self.suavizado)
             
         elif 'objetivos.json' not in os.listdir(f'data/MODELS/{self.model_version}'):
 
@@ -110,7 +115,8 @@ class DataPipeline:
                                                   self.transcripciones, 
                                                   self.funcion_votacion, 
                                                   self.model_version,
-                                                  self.lag)
+                                                  self.lag,
+                                                  self.suavizado)
         
         else:
 
@@ -142,7 +148,7 @@ class DataPipeline:
                 # Caso 1, no hay cache, por lo cual se ejecuta todo desde 0
                 if not self.cache:
 
-                    df_audio = obtener_raw_data(self.df_annotations, audio_name, self.dict_objetivos, self.model_version)
+                    df_audio = obtener_raw_data(self.df_annotations, audio_name, self.dict_objetivos)
                     df_audio['Features'] = self.funcion_features(df_audio['Data'].values)
 
                     df_audio.to_csv(f'data/MODELS/{self.model_version}/FEATURES/{audio_name[:21]}.csv', index = False)
@@ -151,7 +157,7 @@ class DataPipeline:
                 # Caso 2, hay cache, pero el audio no se encuentra procesado
                 elif f'{audio_name[:21]}.csv' not in os.listdir(f'data/MODELS/{self.model_version}/FEATURES'):
 
-                    df_audio = obtener_raw_data(self.df_annotations, audio_name, self.dict_objetivos, self.model_version)
+                    df_audio = obtener_raw_data(self.df_annotations, audio_name, self.dict_objetivos)
                     df_audio['Features'] = self.funcion_features(df_audio['Data'].values)
 
                     df_audio.to_csv(f'data/MODELS/{self.model_version}/FEATURES/{audio_name[:21]}.csv', index = False)
@@ -253,15 +259,7 @@ class DataPipeline:
 
     def entrenar_keras_categorico(self):
 
-        X = [i for i in self.df_final['Features'].values]
-        Y = self.df_final['Target'].values
-
-        # Encoder de las emociones
-        self.encoder = OneHotEncoder()
-        Y = self.encoder.fit_transform(np.array(Y).reshape(-1,1)).toarray()
-
-        # split de la data
-        self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(X, Y, random_state = 42, shuffle=True)
+        self._train_test_split_categorico()
         
         self.scaler = StandardScaler()
         self.x_train = self.scaler.fit_transform(self.x_train)
@@ -302,7 +300,43 @@ class DataPipeline:
         sns_plot.set_xlabel("Predicted Labels")
         sns_plot.set_ylabel("Actual Labels")
         fig = sns_plot.get_figure()
-        fig.savefig(f"data/MODELS/{self.model_version}/confusion_matrix.png") 
+        fig.savefig(f"data/MODELS/{self.model_version}/confusion_matrix.png")
+
+        self.grafico_distribucion_categorias('Train')
+        self.grafico_distribucion_categorias('Test')
+        
+    def grafico_distribucion_categorias(self, tipo : str):
+
+        df_aggregated = self.df_final[self.df_final['Type'] == tipo].groupby('Target').count().reset_index()[['Target','Indice']]
+
+        categories = df_aggregated['Target'].values
+        samples = df_aggregated['Indice'].values
+
+        # Plotting with Seaborn
+        sns.set_style('whitegrid')
+        plt.figure(figsize=(8, 6))
+
+        # Create barplot
+        bars = sns.barplot(x=categories, y=samples, palette='muted')
+
+        # Adding the counts on top of the bars
+        for bar, count in zip(bars.patches, samples):
+            # Text coordinates (x, y)
+            text_x = bar.get_x() + bar.get_width() / 2
+            text_y = bar.get_height()
+            # Format the number to display on top of the bar
+            text = f'{count}'
+            # Display the count
+            plt.text(text_x, text_y, text, ha='center', va='bottom', fontsize=12)
+
+        # Adding labels and title
+        plt.xlabel('Categories', fontsize=14)
+        plt.ylabel('Number of Samples', fontsize=14)
+        plt.title(f'Emotion count {tipo}', fontsize=16)
+
+        # Save plot
+        plt.tight_layout()
+        plt.savefig(f'data/MODELS/{self.model_version}/distribucion_data_{tipo}.png')
 
     def guardar_modelo(self):
 
@@ -319,6 +353,29 @@ class DataPipeline:
         if self.encoder is not None: 
             with open(f"data/MODELS/{self.model_version}/encoder", "wb") as f: pickle.dump(self.encoder, f)
 
+    def _train_test_split_categorico(self):
+
+        self.df_final = pd.merge(self.df_final, 
+                                self.df_annotations[['Audio_Name','Type']].drop_duplicates(), 
+                                how = 'left', 
+                                left_on = 'Audio_Name', 
+                                right_on = 'Audio_Name')
+        
+
+        self.x_train = [i for i in self.df_final[self.df_final['Type'] == 'Train']['Features'].values]
+        self.x_test = [i for i in self.df_final[self.df_final['Type'] == 'Test']['Features'].values]
+
+        # Encoder de las emociones
+        Y = self.df_final['Target'].values
+        self.encoder = OneHotEncoder()
+        self.encoder.fit(np.array(Y).reshape(-1,1))
+        
+        self.y_train = self.df_final[self.df_final['Type'] == 'Train']['Target'].values
+        self.y_test = self.df_final[self.df_final['Type'] == 'Test']['Target'].values
+
+        self.y_train = self.encoder.transform(np.array(self.y_train).reshape(-1,1)).toarray()
+        self.y_test = self.encoder.transform(np.array(self.y_test).reshape(-1,1)).toarray()
+    
     def _convertir_strarray_a_array(self, filas):
         
         x = []
