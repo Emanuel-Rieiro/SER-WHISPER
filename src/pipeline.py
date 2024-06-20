@@ -15,7 +15,6 @@ from src.dataloaders import crear_rangos_transcripciones, crear_objetivos, obten
 from src.feature_extractors import opensmile_features
 from src.votaciones import votacion_promedio_simple
 from src.traductores import obtener_emocion
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
@@ -37,6 +36,8 @@ class DataPipeline:
         self.filemode = kwargs.get('filemode', 'w')
         self.epochs = kwargs.get('epochs', 50)
         self.suavizado = kwargs.get('suavizado', False)
+        self.pesos_votacion = kwargs.get('pesos_votacion', {})
+        self.multiplicador = kwargs.get('multiplicador', 1)
         self.encoder = None
         self.scaler = None
 
@@ -77,6 +78,8 @@ class DataPipeline:
         self._print(f'min_muestras: {self.min_muestras}')
         self._print(f'filemode: {self.filemode}')
         self._print(f'epochs: {self.epochs}')
+        self._print(f'suavizado: {self.suavizado}')
+        self._print(f'multiplicador: {self.multiplicador}')
         self._print('')
         self._print('---------------------------------------------------------')
 
@@ -107,7 +110,9 @@ class DataPipeline:
                                       self.funcion_votacion, 
                                       self.model_version, 
                                       self.lag,
-                                      self.suavizado)
+                                      self.suavizado,
+                                      self.pesos_votacion,
+                                      self.multiplicador)
             
         elif 'objetivos.json' not in os.listdir(f'data/MODELS/{self.model_version}'):
 
@@ -116,7 +121,9 @@ class DataPipeline:
                                                   self.funcion_votacion, 
                                                   self.model_version,
                                                   self.lag,
-                                                  self.suavizado)
+                                                  self.suavizado,
+                                                  self.pesos_votacion,
+                                                  self.multiplicador)
         
         else:
 

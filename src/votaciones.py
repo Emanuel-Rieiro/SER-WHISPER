@@ -49,7 +49,7 @@ def votacion_promedio_simple(df_annotations: pd.DataFrame, part_num: int, pc_num
     
     return df_emotions_vote.reset_index()[['Time','Valence','Arousal','Dominance']]
 
-def votacion_promedio_ponderada(df_annotations: pd.DataFrame, pesos: dict, part_num: int, pc_num: int = None, suavizado : bool = False, **kwargs) -> pd.DataFrame:
+def votacion_promedio_ponderada(df_annotations: pd.DataFrame, pesos_votacion: dict, part_num: int, pc_num: int = None, suavizado : bool = False, multiplicador: float = 1,**kwargs) -> pd.DataFrame:
     """
         Inputs:
             -df_annotations: Dataset annotations directory. For every file contains contains a row with the name, emotion, annotator, podcast part and number.
@@ -64,7 +64,6 @@ def votacion_promedio_ponderada(df_annotations: pd.DataFrame, pesos: dict, part_
     """
 
     audio_name = kwargs.get('audio_name', None)
-    multiplicador = kwargs.get('multiplicador', 1)
     
     votation_means = pd.DataFrame(columns = ['Time','Vote','Emotion'])
     emotions = ['Valence','Arousal','Dominance']
@@ -78,11 +77,11 @@ def votacion_promedio_ponderada(df_annotations: pd.DataFrame, pesos: dict, part_
         
         for name, annotator, emot in zip(df_copy['Annotation_File'], df_copy['Annotator'], df_copy['Emotion']):
 
-            signo = np.sign(pesos[emotion][str(annotator)])
+            signo = np.sign(pesos_votacion[emotion][str(annotator)])
             temp_df = pd.read_csv(f'data/MSPCORPUS/Annotations/{emot}/{name}', skiprows=9, header=None, names=['Time', 'Annotation'])
             temp_df['Annotator'] = annotator
             temp_df['Corrector'] = np.where(temp_df['Annotation'] > 0, 1, -1)
-            temp_df['Annotation_New'] = (abs(temp_df['Annotation']) * ((pesos[emotion][str(annotator)] * multiplicador) + signo)) * temp_df['Corrector']
+            temp_df['Annotation_New'] = (abs(temp_df['Annotation']) * ((pesos_votacion[emotion][str(annotator)] * multiplicador) + signo)) * temp_df['Corrector']
             time = pd.concat([time, temp_df], ignore_index = True)
 
         df_pivot = pd.DataFrame(time.pivot_table(columns = 'Annotator', index = 'Time', values = 'Annotation_New').to_records()).set_index('Time')
