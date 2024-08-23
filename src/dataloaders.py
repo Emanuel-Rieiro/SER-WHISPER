@@ -69,7 +69,7 @@ def crear_rangos_transcripciones(df_annotations: pd.DataFrame, model_version : s
 
     return trans_dict
 
-def crear_objetivos(df_annotations: pd.DataFrame, intervalos_transcripciones : dict, funcion_votacion, model_version: str, lag : float = 0, suavizado : bool = False, pesos_votacion : dict = {}, multiplicador : float = 1):
+def crear_objetivos(df_annotations: pd.DataFrame, intervalos_transcripciones : dict, funcion_votacion, model_version: str, lag : float = 0, suavizado : bool = False, pesos_votacion : dict = {}, multiplicador : float = 1, use_post_process: bool = False):
 
     # Creo mi diccionario que voy a guardare como json
     targets_mean_vote = {}
@@ -96,7 +96,7 @@ def crear_objetivos(df_annotations: pd.DataFrame, intervalos_transcripciones : d
             print(f'Procesando parte {part_num} de {audio_name}')
 
             # Obtengo votación para la parte del audio
-            df_votacion = funcion_votacion(df_annotations, audio_name = audio_name, part_num = part_num, suavizado = suavizado, pesos_votacion = pesos_votacion, multiplicador = multiplicador)
+            df_votacion = funcion_votacion(df_annotations, audio_name = audio_name, part_num = part_num, suavizado = suavizado, pesos_votacion = pesos_votacion, multiplicador = multiplicador, use_post_process = use_post_process)
 
             # Verificamos que solo halla un start time y nos lo quedamos
             assert len(df_audio[df_audio['Part_Num'] == part_num]['start_time'].unique()) == 1, 'Más de un start time'

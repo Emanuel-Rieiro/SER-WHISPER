@@ -38,6 +38,7 @@ class DataPipeline:
         self.suavizado = kwargs.get('suavizado', False)
         self.pesos_votacion = kwargs.get('pesos_votacion', {})
         self.multiplicador = kwargs.get('multiplicador', 1)
+        self.use_post_process = kwargs.get('use_post_process', False)
         self.encoder = None
         self.scaler = None
 
@@ -80,6 +81,7 @@ class DataPipeline:
         self._print(f'epochs: {self.epochs}')
         self._print(f'suavizado: {self.suavizado}')
         self._print(f'multiplicador: {self.multiplicador}')
+        self._print(f'use_post_process: {self.use_post_process}')
         self._print('')
         self._print('---------------------------------------------------------')
 
@@ -112,7 +114,8 @@ class DataPipeline:
                                       self.lag,
                                       self.suavizado,
                                       self.pesos_votacion,
-                                      self.multiplicador)
+                                      self.multiplicador,
+                                      self.use_post_process)
             
         elif 'objetivos.json' not in os.listdir(f'data/MODELS/{self.model_version}'):
 
@@ -123,7 +126,8 @@ class DataPipeline:
                                                   self.lag,
                                                   self.suavizado,
                                                   self.pesos_votacion,
-                                                  self.multiplicador)
+                                                  self.multiplicador,
+                                                  self.use_post_process)
         
         else:
 
@@ -353,7 +357,8 @@ class DataPipeline:
         np.save(f'data/MODELS/{self.model_version}/y_test.npy', self.y_test)
 
         self.model.guardar_modelo(f'data/MODELS/{self.model_version}')
-        
+        self.model.guarder_reporte_estructura(f'data/MODELS/{self.model_version}')
+
         if self.scaler is not None: 
             joblib.dump(self.scaler, f'data/MODELS/{self.model_version}/std_scaler.bin', compress=True)
 
@@ -393,6 +398,12 @@ class DataPipeline:
         return x
 
     def run_pipeline(self, steps):
+        
+        # Print inicial
+        self._print('Pipeline:')
+        for step in steps: self._print(f'{step.__name__}')
+        
+        # Ejecución de pipeline
         for step in steps:
             self._print(f'Ejecutando modulo {step.__name__}')
             step()

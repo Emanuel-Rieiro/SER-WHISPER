@@ -5,6 +5,8 @@ MSPCORPUS
 audiolist.pkl
 mspconvs.pkl
 wadf.pkl
+Investigacion_*
+ANNOTATIONS-POST
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

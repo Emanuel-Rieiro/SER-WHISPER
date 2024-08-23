@@ -64,3 +64,47 @@ class MyKerasModel:
 
     def guardar_modelo(self, path : str):
         self.model.save(f'{path}/model.keras')
+
+    def guarder_reporte_estructura(self, path : str):
+        # Open the file
+        with open(f'{path}/report.txt', 'w', encoding="utf-8") as fh:
+            self.model.summary(print_fn=lambda x: fh.write(x + '\n'))
+
+class MyKerasModelv2:
+
+    def __init__(self, input_shape, num_classes, encoder):
+        self.input_shape = input_shape
+        self.num_classes = num_classes
+        self.model = self._build_model()
+        self.encoder = encoder
+
+    def _build_model(self):
+
+        model = Sequential()
+        model.add(Conv1D(512,kernel_size=5, strides=1,padding='same', activation='relu',input_shape=(self.input_shape,1)))
+        model.add(BatchNormalization())
+        model.add(MaxPooling1D(pool_size=5,strides=2,padding='same'))
+    
+        model.add(Conv1D(512,kernel_size=5,strides=1,padding='same',activation='relu'))
+        model.add(BatchNormalization())
+        model.add(MaxPooling1D(pool_size=5,strides=2,padding='same'))
+        model.add(Dropout(0.2))  # Add dropout layer after the second max pooling layer
+    
+        model.add(Conv1D(256,kernel_size=5,strides=1,padding='same',activation='relu'))
+        model.add(BatchNormalization())
+        model.add(MaxPooling1D(pool_size=5,strides=2,padding='same'))
+    
+        model.add(Conv1D(256,kernel_size=3,strides=1,padding='same',activation='relu'))
+        model.add(BatchNormalization())
+        model.add(MaxPooling1D(pool_size=5,strides=2,padding='same'))
+        model.add(Dropout(0.2))  # Add dropout layer after the fourth max pooling layer
+    
+        model.add(Conv1D(128,kernel_size=3,strides=1,padding='same',activation='relu'))
+        model.add(BatchNormalization())
+        model.add(MaxPooling1D(pool_size=3,strides=2,padding='same'))
+        model.add(Dropout(0.2))  # Add dropout layer after the fifth max pooling layer
+    
+        model.add(Flatten())
+        model.add(Dense(512,activation='relu'))
+        model.add(BatchNormalization())
+        model.add(Dense(units=self.num_classes ,activation='softmax'))

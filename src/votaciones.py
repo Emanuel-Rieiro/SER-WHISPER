@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-def votacion_promedio_simple(df_annotations: pd.DataFrame, part_num: int, pc_num: int = None, audio_name: str = None, suavizado : bool = False,**kwargs) -> pd.DataFrame:
+def votacion_promedio_simple(df_annotations: pd.DataFrame, part_num: int, pc_num: int = None, audio_name: str = None, suavizado : bool = False, use_post_process = False, **kwargs) -> pd.DataFrame:
     """
         Inputs:
             -df_annotations: Dataset annotations directory. For every file contains contains a row with the name, emotion, annotator, podcast part and number.
@@ -17,6 +17,8 @@ def votacion_promedio_simple(df_annotations: pd.DataFrame, part_num: int, pc_num
     votation_means = pd.DataFrame(columns = ['Time','Vote','Emotion'])
     emotions = ['Valence','Arousal','Dominance']
 
+    read_path = 'data/ANNOTATIONS-POST' if use_post_process else 'data/MSPCORPUS/Annotations'
+
     for emotion in emotions:
         
         time = pd.DataFrame(columns = ['Time','Annotation','Annotator'])
@@ -26,30 +28,29 @@ def votacion_promedio_simple(df_annotations: pd.DataFrame, part_num: int, pc_num
         
         for name, annotator, emot in zip(df_copy['Annotation_File'], df_copy['Annotator'], df_copy['Emotion']):
         
-            temp_df = pd.read_csv(f'data/MSPCORPUS/Annotations/{emot}/{name}', skiprows=9, header=None, names=['Time', 'Annotation'])
+            temp_df = pd.read_csv(f'{read_path}/{emot}/{name}', skiprows=9, header=None, names=['Time', 'Annotation'])
             temp_df['Annotator'] = annotator
             time = pd.concat([time, temp_df], ignore_index = True)
             
         df_pivot = pd.DataFrame(time.pivot_table(columns = 'Annotator', index = 'Time', values = 'Annotation').to_records()).set_index('Time')
-        df_pivot = df_pivot.fillna(method='ffill')
+        df_pivot = df_pivot.ffill()
         df_pivot['Vote'] = df_pivot.mean(axis = 1)
         df_pivot['Emotion'] = emotion
 
         votation_means = pd.concat([votation_means, df_pivot.reset_index()])
 
     df_emotions_vote = pd.DataFrame(votation_means.pivot_table(columns = 'Emotion', index = 'Time', values = 'Vote').to_records()).set_index('Time')
-    df_emotions_vote = df_emotions_vote.fillna(method='ffill')
-    df_emotions_vote = df_emotions_vote.fillna(method='bfill') # NEW: Agregado para rellenar las anotacioens que faltan al empezar
-    
+    df_emotions_vote = df_emotions_vote.ffill()
+
     # Código para aplicación del suavizado por ventana movil, por ahora hard codeada a 300
     if suavizado:
         for emocion in ['Valence','Arousal','Dominance']:
             df_emotions_vote[emocion] = df_emotions_vote[emocion].rolling(int(len(df_emotions_vote[emocion])/300)).mean()
-            df_emotions_vote = df_emotions_vote.fillna(method='bfill')
+            df_emotions_vote = df_emotions_vote.bfill()
     
     return df_emotions_vote.reset_index()[['Time','Valence','Arousal','Dominance']]
 
-def votacion_promedio_ponderada(df_annotations: pd.DataFrame, pesos_votacion: dict, part_num: int, pc_num: int = None, suavizado : bool = False, multiplicador: float = 1,**kwargs) -> pd.DataFrame:
+def votacion_promedio_ponderada(df_annotations: pd.DataFrame, pesos_votacion: dict, part_num: int, pc_num: int = None, suavizado : bool = False, multiplicador: float = 1, use_post_process = False,**kwargs) -> pd.DataFrame:
     """
         Inputs:
             -df_annotations: Dataset annotations directory. For every file contains contains a row with the name, emotion, annotator, podcast part and number.
@@ -67,6 +68,7 @@ def votacion_promedio_ponderada(df_annotations: pd.DataFrame, pesos_votacion: di
     
     votation_means = pd.DataFrame(columns = ['Time','Vote','Emotion'])
     emotions = ['Valence','Arousal','Dominance']
+    read_path = 'data/ANNOTATIONS-POST' if use_post_process else 'data/MSPCORPUS/Annotations'
 
     for emotion in emotions:
 
@@ -78,26 +80,26 @@ def votacion_promedio_ponderada(df_annotations: pd.DataFrame, pesos_votacion: di
         for name, annotator, emot in zip(df_copy['Annotation_File'], df_copy['Annotator'], df_copy['Emotion']):
 
             signo = np.sign(pesos_votacion[emotion][str(annotator)])
-            temp_df = pd.read_csv(f'data/MSPCORPUS/Annotations/{emot}/{name}', skiprows=9, header=None, names=['Time', 'Annotation'])
+            temp_df = pd.read_csv(f'{read_path}/{emot}/{name}', skiprows=9, header=None, names=['Time', 'Annotation'])
             temp_df['Annotator'] = annotator
             temp_df['Corrector'] = np.where(temp_df['Annotation'] > 0, 1, -1)
             temp_df['Annotation_New'] = (abs(temp_df['Annotation']) * ((pesos_votacion[emotion][str(annotator)] * multiplicador) + signo)) * temp_df['Corrector']
             time = pd.concat([time, temp_df], ignore_index = True)
 
         df_pivot = pd.DataFrame(time.pivot_table(columns = 'Annotator', index = 'Time', values = 'Annotation_New').to_records()).set_index('Time')
-        df_pivot = df_pivot.fillna(method='ffill')
+        df_pivot = df_pivot.ffill()
         df_pivot['Vote'] = df_pivot.mean(axis = 1)
         df_pivot['Emotion'] = emotion
 
         votation_means = pd.concat([votation_means, df_pivot.reset_index()])
 
     df_emotions_vote = pd.DataFrame(votation_means.pivot_table(columns = 'Emotion', index = 'Time', values = 'Vote').to_records()).set_index('Time')
-    df_emotions_vote = df_emotions_vote.fillna(method='ffill')
+    df_emotions_vote = df_emotions_vote.ffill()
 
     # Código para aplicación del suavizado por ventana movil, por ahora hard codeada a 300
     if suavizado:
         for emocion in ['Valence','Arousal','Dominance']:
             df_emotions_vote[emocion] = df_emotions_vote[emocion].rolling(int(len(df_emotions_vote[emocion])/300)).mean()
-            df_emotions_vote = df_emotions_vote.fillna(method='bfill')
+            df_emotions_vote = df_emotions_vote.bfill()
             
     return df_emotions_vote.reset_index()[['Time','Valence','Arousal','Dominance']]
