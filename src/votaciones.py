@@ -18,6 +18,7 @@ def votacion_promedio_simple(df_annotations: pd.DataFrame, part_num: int, pc_num
     emotions = ['Valence','Arousal','Dominance']
 
     read_path = 'data/ANNOTATIONS-POST' if use_post_process else 'data/MSPCORPUS/Annotations'
+    skip_row = 1 if use_post_process else 9
 
     for emotion in emotions:
         
@@ -28,7 +29,7 @@ def votacion_promedio_simple(df_annotations: pd.DataFrame, part_num: int, pc_num
         
         for name, annotator, emot in zip(df_copy['Annotation_File'], df_copy['Annotator'], df_copy['Emotion']):
         
-            temp_df = pd.read_csv(f'{read_path}/{emot}/{name}', skiprows=9, header=None, names=['Time', 'Annotation'])
+            temp_df = pd.read_csv(f'{read_path}/{emot}/{name}', skiprows=skip_row, header=None, names=['Time', 'Annotation'])
             temp_df['Annotator'] = annotator
             time = pd.concat([time, temp_df], ignore_index = True)
             
@@ -69,6 +70,7 @@ def votacion_promedio_ponderada(df_annotations: pd.DataFrame, pesos_votacion: di
     votation_means = pd.DataFrame(columns = ['Time','Vote','Emotion'])
     emotions = ['Valence','Arousal','Dominance']
     read_path = 'data/ANNOTATIONS-POST' if use_post_process else 'data/MSPCORPUS/Annotations'
+    skip_row = 1 if use_post_process else 9
 
     for emotion in emotions:
 
@@ -80,7 +82,7 @@ def votacion_promedio_ponderada(df_annotations: pd.DataFrame, pesos_votacion: di
         for name, annotator, emot in zip(df_copy['Annotation_File'], df_copy['Annotator'], df_copy['Emotion']):
 
             signo = np.sign(pesos_votacion[emotion][str(annotator)])
-            temp_df = pd.read_csv(f'{read_path}/{emot}/{name}', skiprows=9, header=None, names=['Time', 'Annotation'])
+            temp_df = pd.read_csv(f'{read_path}/{emot}/{name}', skiprows=skip_row, header=None, names=['Time', 'Annotation'])
             temp_df['Annotator'] = annotator
             temp_df['Corrector'] = np.where(temp_df['Annotation'] > 0, 1, -1)
             temp_df['Annotation_New'] = (abs(temp_df['Annotation']) * ((pesos_votacion[emotion][str(annotator)] * multiplicador) + signo)) * temp_df['Corrector']

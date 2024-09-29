@@ -54,32 +54,16 @@ def mfcc(data,sr,frame_length=2048,hop_length=512,flatten:bool=True):
     mfcc=librosa.feature.mfcc(y = data,sr=sr)
     return np.squeeze(mfcc.T)if not flatten else np.ravel(mfcc.T)
 
-def extract_features(data,sr=22050,frame_length=2048,hop_length=512):
-    result=np.array([])
+def traditional_features(data : np.ndarray, sr : int = 16000, frame_length=2048, hop_length=512):
     
-    result=np.hstack((result,
-                      zcr(data,frame_length,hop_length),
-                      rmse(data,frame_length,hop_length),
-                      mfcc(data,sr,frame_length,hop_length)
-                     ))
-    return result
+    x = []
+    for i in data:
+        x.append(list(np.hstack((
+                      zcr(i,frame_length,hop_length),
+                      rmse(i,frame_length,hop_length),
+                      mfcc(i,sr,frame_length,hop_length)
+                        ))
+                    )
+                )
 
-def get_features(path,duration=2.5, offset=0.6):
-    data,sr=librosa.load(path,duration=duration,offset=offset)
-    aud=extract_features(data)
-    audio=np.array(aud)
-    
-    noised_audio=noise(data)
-    aud2=extract_features(noised_audio)
-    audio=np.vstack((audio,aud2))
-    
-    pitched_audio=pitch(data,sr)
-    aud3=extract_features(pitched_audio)
-    audio=np.vstack((audio,aud3))
-    
-    pitched_audio1=pitch(data,sr)
-    pitched_noised_audio=noise(pitched_audio1)
-    aud4=extract_features(pitched_noised_audio)
-    audio=np.vstack((audio,aud4))
-    
-    return audio
+    return x

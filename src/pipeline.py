@@ -39,6 +39,10 @@ class DataPipeline:
         self.pesos_votacion = kwargs.get('pesos_votacion', {})
         self.multiplicador = kwargs.get('multiplicador', 1)
         self.use_post_process = kwargs.get('use_post_process', False)
+        self.model_architecture = kwargs.get('model_architecture', 'MyKerasModel')
+        self.rangos_whisper = kwargs.get('rangos_whisper', True)
+        self.window = kwargs.get('window', 0)
+        self.step = kwargs.get('step', 0)
         self.encoder = None
         self.scaler = None
 
@@ -63,6 +67,9 @@ class DataPipeline:
         # Imprimir detalles de la build
         self._imprimir_detalles()
 
+        # Errores de verificación
+        assert (self.rangos_whisper or (self.window > 0 and self.step > 0)), 'Ventanas de extracción de segmentos inválida'
+
     def _print(self, string_param : str):
         print(string_param)
         self.logger.info(string_param)
@@ -82,6 +89,10 @@ class DataPipeline:
         self._print(f'suavizado: {self.suavizado}')
         self._print(f'multiplicador: {self.multiplicador}')
         self._print(f'use_post_process: {self.use_post_process}')
+        self._print(f'model_architecture: {self.model_architecture}')
+        self._print(f'rangos_whisper: {self.rangos_whisper}')
+        self._print(f'window: {self.window if self.window != 0 else "NO APLICA"}')
+        self._print(f'step: {self.step if self.step != 0 else "NO APLICA"}')
         self._print('')
         self._print('---------------------------------------------------------')
 
@@ -92,10 +103,10 @@ class DataPipeline:
         """
         
         if not self.cache:
-            self.transcripciones = crear_rangos_transcripciones(self.df_annotations, self.model_version)
+            self.transcripciones = crear_rangos_transcripciones(self.df_annotations, self.model_version, self.rangos_whisper, self.window, self.step)
 
         elif 'transcripciones.json' not in os.listdir(f'data/MODELS/{self.model_version}'):
-            self.transcripciones = crear_rangos_transcripciones(self.df_annotations, self.model_version)
+            self.transcripciones = crear_rangos_transcripciones(self.df_annotations, self.model_version, self.rangos_whisper, self.window, self.step)
         
         else:
             with open(f'data/MODELS/{self.model_version}/transcripciones.json', 'r') as f: 
@@ -279,7 +290,11 @@ class DataPipeline:
         self.x_train = np.expand_dims(self.x_train, axis=2)
         self.x_test = np.expand_dims(self.x_test, axis=2)
 
-        self.model = MyKerasModel(self.x_train.shape[1], len(self.df_final['Target'].unique()), encoder = self.encoder)
+        if self.model_architecture == 'MyKerasModel':
+            self.model = MyKerasModel(self.x_train.shape[1], len(self.df_final['Target'].unique()), encoder = self.encoder)
+        elif self.model_architecture == 'MyKerasModelv2':
+            self.model = MyKerasModelv2(self.x_train.shape[1], len(self.df_final['Target'].unique()), encoder = self.encoder)
+
         self.model.compile_model()
         self.model.train_model(self.x_train, self.y_train, self.x_test, self.y_test, epochs = self.epochs)
     

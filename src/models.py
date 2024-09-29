@@ -70,6 +70,7 @@ class MyKerasModel:
         with open(f'{path}/report.txt', 'w', encoding="utf-8") as fh:
             self.model.summary(print_fn=lambda x: fh.write(x + '\n'))
 
+# Sacado de: https://www.kaggle.com/code/mostafaabdlhamed/speech-emotion-recognition-97-25-accuracy
 class MyKerasModelv2:
 
     def __init__(self, input_shape, num_classes, encoder):
@@ -108,3 +109,36 @@ class MyKerasModelv2:
         model.add(Dense(512,activation='relu'))
         model.add(BatchNormalization())
         model.add(Dense(units=self.num_classes ,activation='softmax'))
+
+        return model
+
+    def compile_model(self):
+        self.model.compile(optimizer = 'adam', 
+                           loss = 'categorical_crossentropy',
+                           metrics = ['accuracy'])
+        
+    def train_model(self, x_train, y_train, x_test, y_test, epochs=1, batch_size=64):
+        rlrp = ReduceLROnPlateau(monitor='val_accuracy',patience=10,verbose=1,factor=0.5,min_lr=0.00001)
+        es = EarlyStopping(monitor='val_accuracy',mode='auto',patience=20,restore_best_weights=True)
+        self.model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_test, y_test), callbacks=[rlrp, es])
+
+    def evaluate_model(self, x_test, y_test):
+        return self.model.evaluate(x_test, y_test)
+    
+    def score_model(self, x_test, y_test, average : str = 'macro'):
+        pred_test = self.model.predict(x_test)
+        y_pred = self.encoder.inverse_transform(pred_test)
+        y_test = self.encoder.inverse_transform(y_test)
+
+        return precision_recall_fscore_support(y_test, y_pred, average = average)
+    
+    def predict(self, X):
+        return self.model.predict(X)
+
+    def guardar_modelo(self, path : str):
+        self.model.save(f'{path}/model.keras')
+
+    def guarder_reporte_estructura(self, path : str):
+        # Open the file
+        with open(f'{path}/report.txt', 'w', encoding="utf-8") as fh:
+            self.model.summary(print_fn=lambda x: fh.write(x + '\n'))

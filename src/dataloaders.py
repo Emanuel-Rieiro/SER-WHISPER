@@ -29,7 +29,12 @@ def cargar_audio_data(df_annotations: pd.DataFrame, pc_num: int = None, audio_na
 
     return data, time, sr
 
-def crear_rangos_transcripciones(df_annotations: pd.DataFrame, model_version : str, **kwargs):
+def crear_rangos_transcripciones(df_annotations: pd.DataFrame, 
+                                 model_version : str, 
+                                 rangos_whisper : bool = True, 
+                                 window : float = 2.5,
+                                 step : float = 0.5,
+                                 **kwargs):
 
     """
         Input:
@@ -44,25 +49,46 @@ def crear_rangos_transcripciones(df_annotations: pd.DataFrame, model_version : s
     audios_name = df_annotations['Audio_Name'].unique()
     trans_dict = {}
 
-    # Loop para optener todas las tuplas de inicio fin de todas las transcripciones y guardarlas en el diccionario trans_dict
-    for audio_name in audios_name:
-        audio_name_json = audio_name[:-4] + '.json'
+    # Usar transcripciones de whisper como targets
+    if rangos_whisper:
 
-        with open(f'{trans_path}/{audio_name_json}') as f:
-            audio_data = json.load(f)
+        # Loop para optener todas las tuplas de inicio fin de todas las transcripciones y guardarlas en el diccionario trans_dict
+        for audio_name in audios_name:
+            audio_name_json = audio_name[:-4] + '.json'
 
-        trans_dict[audio_name] = {}
-        x = []
-        y = []
-        for segment in audio_data['segments']:
-            x.append((segment['start'], segment['end']))
-            y.append(segment['text'])
+            with open(f'{trans_path}/{audio_name_json}') as f:
+                audio_data = json.load(f)
 
-        trans_dict[audio_name]['rangos'] = x
-        trans_dict[audio_name]['texto'] = y
+            trans_dict[audio_name] = {}
+            x = []
+            y = []
+            for segment in audio_data['segments']:
+                x.append((segment['start'], segment['end']))
+                y.append(segment['text'])
 
-    # Verificación de haber transcripto todos los audios que no se encuentran en development
-    assert len(trans_dict.keys()) == 205, f'Deben de haber 205 audios con transcripciones, se transcribieron {len(trans_dict.keys())}'
+            trans_dict[audio_name]['rangos'] = x
+            trans_dict[audio_name]['texto'] = y
+
+        # Verificación de haber transcripto todos los audios que no se encuentran en development
+        assert len(trans_dict.keys()) == 205, f'Deben de haber 205 audios con transcripciones, se transcribieron {len(trans_dict.keys())}'
+
+    # Usar otra cosa como targets
+    else:
+
+        for index , row in df_annotations.groupby('Audio_Name').max().reset_index()[['Audio_Name','end_time']].iterrows():
+
+            trans_dict[row['Audio_Name']] = {}
+            i = 0
+            x = []
+            y = []
+            while i + window <= np.floor(row['end_time']):
+                x.append((i , i + window))
+                y.append('')
+
+                i += step
+
+            trans_dict[row['Audio_Name']]['rangos'] = x
+            trans_dict[row['Audio_Name']]['texto'] = y
 
     # Guardo el diccionario en archivo json
     with open(f'data/MODELS/{model_version}/transcripciones.json', 'w') as f: json.dump(trans_dict, f)
