@@ -28,3 +28,19 @@ def obtener_emocion(valence : float, arousal : float, dominance : float, mapping
             min_distance = distance 
     
     return best_emotion
+
+def clasificar_valencia_basica(valence: float) -> str:
+    
+    if valence > 20:
+        return 'positive'
+    elif valence < -20:
+        return 'negative'
+    else:
+        return 'neutral'
+    
+def clasificar_valencia_binaria(valence: float) -> str:
+    
+    if valence > 0:
+        return 'positive'
+    elif valence <= 0:
+        return 'negative'

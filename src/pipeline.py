@@ -14,7 +14,7 @@ from src.models import *
 from src.dataloaders import crear_rangos_transcripciones, crear_objetivos, obtener_raw_data
 from src.feature_extractors import opensmile_features
 from src.votaciones import votacion_promedio_simple
-from src.traductores import obtener_emocion
+from src.traductores import obtener_emocion, clasificar_valencia_basica, clasificar_valencia_binaria
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
@@ -243,7 +243,12 @@ class DataPipeline:
 
     def crear_target_categorico(self):
         
-        self.df_final['Target'] = [obtener_emocion(i[0],i[1],i[2], mapping = self.mapping) for i in self.df_final['Target']]
+        if self.mapping in ['Ekman','Russell_Mehrabian','OCC']:
+            self.df_final['Target'] = [obtener_emocion(i[0],i[1],i[2], mapping = self.mapping) for i in self.df_final['Target']]
+        elif self.mapping in ['Valencia_Basica']:
+            self.df_final['Target'] = [clasificar_valencia_basica(i[0]) for i in self.df_final['Target']]
+        elif self.mapping in ['Valencia_Binaria']:
+            self.df_final['Target'] = [clasificar_valencia_binaria(i[0]) for i in self.df_final['Target']]
 
         self._print('---------------------------------------------------------')
 
@@ -389,6 +394,17 @@ class DataPipeline:
                                 right_on = 'Audio_Name')
         
 
+        # Buscar y eliminar nans, aveces pasa por tener segmentos de audio inutiles
+        nan_list = []
+        for index, row in self.df_final[self.df_final['Type'] == 'Test'].iterrows():
+            if np.isnan(np.sum(row['Features'])):
+                nan_list.append(index)
+
+        self.df_final.drop(nan_list, inplace = True)
+
+        if len(nan_list) > 0: self._print(f'Se han detectado nan en el dataset')
+
+        # Segmentación en train y test de los input
         self.x_train = [i for i in self.df_final[self.df_final['Type'] == 'Train']['Features'].values]
         self.x_test = [i for i in self.df_final[self.df_final['Type'] == 'Test']['Features'].values]
 
@@ -397,6 +413,7 @@ class DataPipeline:
         self.encoder = OneHotEncoder()
         self.encoder.fit(np.array(Y).reshape(-1,1))
         
+        # Segmentación en train y test de los target
         self.y_train = self.df_final[self.df_final['Type'] == 'Train']['Target'].values
         self.y_test = self.df_final[self.df_final['Type'] == 'Test']['Target'].values
 

@@ -7,6 +7,8 @@ mspconvs.pkl
 wadf.pkl
 Investigacion_*
 ANNOTATIONS-POST
+Pre-Process exploration.ipynb
+Sentiment analysis exploration.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
