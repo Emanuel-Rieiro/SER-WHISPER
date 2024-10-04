@@ -34,6 +34,8 @@ def crear_rangos_transcripciones(df_annotations: pd.DataFrame,
                                  rangos_whisper : bool = True, 
                                  window : float = 2.5,
                                  step : float = 0.5,
+                                 min_seg_audio_valido : float = 0,
+                                 max_seg_audio_valido : float = 0,
                                  **kwargs):
 
     """
@@ -51,6 +53,13 @@ def crear_rangos_transcripciones(df_annotations: pd.DataFrame,
 
     # Usar transcripciones de whisper como targets
     if rangos_whisper:
+        
+        if min_seg_audio_valido > 0 or max_seg_audio_valido > 0: 
+            segmento_completo = False
+            if min_seg_audio_valido == 0 and max_seg_audio_valido > 0:
+                min_seg_audio_valido = 9999999
+        else: 
+            segmento_completo = True
 
         # Loop para optener todas las tuplas de inicio fin de todas las transcripciones y guardarlas en el diccionario trans_dict
         for audio_name in audios_name:
@@ -63,8 +72,9 @@ def crear_rangos_transcripciones(df_annotations: pd.DataFrame,
             x = []
             y = []
             for segment in audio_data['segments']:
-                x.append((segment['start'], segment['end']))
-                y.append(segment['text'])
+                if segmento_completo or (segment['end'] - segment['start']) > min_seg_audio_valido or (segment['end'] - segment['start']) < max_seg_audio_valido:
+                    x.append((segment['start'], segment['end']))
+                    y.append(segment['text'])
 
             trans_dict[audio_name]['rangos'] = x
             trans_dict[audio_name]['texto'] = y

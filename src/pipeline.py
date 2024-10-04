@@ -26,10 +26,10 @@ class DataPipeline:
         df_annotations = pd.read_excel('data/annotations.xlsx')
         df_annotations = df_annotations[df_annotations['Type'] != 'Development'].reset_index(drop = True)
         self.df_annotations = df_annotations
-        self.model_version = model_version
-        self.funcion_votacion = kwargs.get('funcion_votacion', votacion_promedio_simple)
-        self.funcion_features = kwargs.get('funcion_features', opensmile_features)
-        self.lag = kwargs.get('lag', 0)
+        self.model_version = model_version                                                  # Versión del modelo
+        self.funcion_votacion = kwargs.get('funcion_votacion', votacion_promedio_simple)    # Función usada para votar
+        self.funcion_features = kwargs.get('funcion_features', opensmile_features)          # Función para obtener features
+        self.lag = kwargs.get('lag', 0)                                                     # Buffer de segundos entre que inicia el audio y que tomamos las anotaciones
         self.cache = kwargs.get('cache', False)
         self.mapping = kwargs.get('mapping', 'Ekman')
         self.min_muestras = kwargs.get('min_muestras', 400)
@@ -45,6 +45,8 @@ class DataPipeline:
         self.step = kwargs.get('step', 0)
         self.encoder = None
         self.scaler = None
+        self.min_seg_audio_valido = kwargs.get('min_seg_audio_valido', 0)                # Mínimo de segundos que es necesario tenga un audio para ser usado, en caso de ser 0 no se utiliza
+        self.max_seg_audio_valido = kwargs.get('max_seg_audio_valido', 0)                # Máximo de segundos que es necesario tenga un audio para ser usado, en caso de ser 0 no se utiliza
 
         # Crear directorios
         try: os.listdir(f'data/MODELS')
@@ -103,10 +105,22 @@ class DataPipeline:
         """
         
         if not self.cache:
-            self.transcripciones = crear_rangos_transcripciones(self.df_annotations, self.model_version, self.rangos_whisper, self.window, self.step)
+            self.transcripciones = crear_rangos_transcripciones(self.df_annotations, 
+                                                                self.model_version, 
+                                                                self.rangos_whisper, 
+                                                                self.window, 
+                                                                self.step,
+                                                                self.min_seg_audio_valido,
+                                                                self.max_seg_audio_valido)
 
         elif 'transcripciones.json' not in os.listdir(f'data/MODELS/{self.model_version}'):
-            self.transcripciones = crear_rangos_transcripciones(self.df_annotations, self.model_version, self.rangos_whisper, self.window, self.step)
+            self.transcripciones = crear_rangos_transcripciones(self.df_annotations, 
+                                                                self.model_version, 
+                                                                self.rangos_whisper, 
+                                                                self.window, 
+                                                                self.step,
+                                                                self.min_seg_audio_valido,
+                                                                self.max_seg_audio_valido)
         
         else:
             with open(f'data/MODELS/{self.model_version}/transcripciones.json', 'r') as f: 
@@ -431,6 +445,18 @@ class DataPipeline:
 
     def run_pipeline(self, steps):
         
+        # Expected step order (example)
+        # crear_rangos_transcripciones
+        # crear_objetivos
+        # obtener_features
+        # acondicionar_dataset
+        # remover_duplicados
+        # crear_target_categorico
+        # alinear_muestras
+        # entrenar_keras_categorico
+        # guardar_modelo
+        # metricas_modelo_categorico
+
         # Print inicial
         self._print('Pipeline:')
         for step in steps: self._print(f'{step.__name__}')
