@@ -56,8 +56,8 @@ def crear_rangos_transcripciones(df_annotations: pd.DataFrame,
         
         if min_seg_audio_valido > 0 or max_seg_audio_valido > 0: 
             segmento_completo = False
-            if min_seg_audio_valido == 0 and max_seg_audio_valido > 0:
-                min_seg_audio_valido = 9999999
+            if max_seg_audio_valido == 0 and min_seg_audio_valido > 0:
+                max_seg_audio_valido = 9999999
         else: 
             segmento_completo = True
 
@@ -72,7 +72,7 @@ def crear_rangos_transcripciones(df_annotations: pd.DataFrame,
             x = []
             y = []
             for segment in audio_data['segments']:
-                if segmento_completo or (segment['end'] - segment['start']) > min_seg_audio_valido or (segment['end'] - segment['start']) < max_seg_audio_valido:
+                if segmento_completo or ((segment['end'] - segment['start']) > min_seg_audio_valido and (segment['end'] - segment['start']) < max_seg_audio_valido):
                     x.append((segment['start'], segment['end']))
                     y.append(segment['text'])
 

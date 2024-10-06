@@ -20,7 +20,7 @@ def opensmile_features(data : np.ndarray):
 
     x = []
     for i in data:
-        x.append(list(smile.process_signal(i, sampling_rate = 16000).values[0]))
+        x.append(list(smile.process_signal(i, sampling_rate = 22050).values[0]))
 
     return x
 
@@ -54,7 +54,7 @@ def mfcc(data,sr,frame_length=2048,hop_length=512,flatten:bool=True):
     mfcc=librosa.feature.mfcc(y = data,sr=sr)
     return np.squeeze(mfcc.T)if not flatten else np.ravel(mfcc.T)
 
-def traditional_features(data : np.ndarray, sr : int = 16000, frame_length=2048, hop_length=512):
+def traditional_features(data : np.ndarray, sr : int = 22050, frame_length=2048, hop_length=512):
     
     x = []
     for i in data:
